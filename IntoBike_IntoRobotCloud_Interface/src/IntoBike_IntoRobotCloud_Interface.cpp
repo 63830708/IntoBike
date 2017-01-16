@@ -83,10 +83,6 @@ extern "C"
 			params.vc_ki_ = (float)str.toInt()/5000.0;
 			//params.vc_ki_ = params.vc_kp_ / 100.0;
 		}
-		if(jsonGetValue(payload,"max_accel_sliderbar",str))
-		{
-			params.max_accel_ = str.toInt();
-		}
 		if(jsonGetValue(payload,"max_magnitude_sliderbar",str))
 		{
 			params.max_magnitude_ = str.toInt();
@@ -118,9 +114,9 @@ void IntoBikeCloudInterface::begin(StepMotorControl stepmotor_control[], Balance
 void IntoBikeCloudInterface::controlCallback(void)
 {
     if(_joypad.getUpkey() == 1)
-       getInstance()->balance_controller_->setMoveDirection(-1);
-    else if(_joypad.getDownkey() == 1)
        getInstance()->balance_controller_->setMoveDirection(1);
+    else if(_joypad.getDownkey() == 1)
+       getInstance()->balance_controller_->setMoveDirection(-1);
     else
        getInstance()->balance_controller_->setMoveDirection(0); 
        
