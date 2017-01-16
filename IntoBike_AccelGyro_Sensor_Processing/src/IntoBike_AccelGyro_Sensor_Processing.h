@@ -1,3 +1,5 @@
+/*该头文件引用由IntoRobot自动添加.*/
+#include <MeanFilter/MeanFilter.h>
 /*
 ************************************************************************
 * 作者:  IntoRobot Team 
@@ -38,28 +40,26 @@ u为系统输入，为上一时刻的倾角速度（pitch rate）；
 w1为过程噪声，方差为Q；w2为观测噪声，方差为R；
 A为状态转移矩阵，B为控制矩阵，C为观测矩阵
 */
-
 #ifndef __INTOBIKE_ACCELGYRO_SENSOR_PROCESSING_H__
 #define __INTOBIKE_ACCELGYRO_SENSOR_PROCESSING_H__
-
 #include"application.h"    //used for sensor library include
 /*该头文件引用由IntoRobot自动添加.*/
 #include <Matrix/Matrix.h>
 /*--------------- Macros -----------------*/
 #define PI 3.14159265358
+#define ACC_FILTER_COUNT 16
 #define ACCEL_SENSOR_RANGE BMI160_ACCEL_RANGE_4G
 #define GYRO_SENSOR_RANGE  BMI160_GYRO_RANGE_2000_DEG_SEC
 using namespace mm;
-
 struct PoseData
 {
-    float pitch_;
-    float pitch_rate_;
-};
-
+	float pitch_;
+	float pitch_rate_;
+}
+;
 class AccelGyroSensorProcessing
 {
-public:
+	public:
 	void begin();
 	void begin(float sampling_time, u8 filter_type);
 	void init();
@@ -69,16 +69,32 @@ public:
 	bool detectPickUp();
 	int  event(void);
 	PoseData getFilteredData(void);
+	u8   getFilterType(void);
 	float    getAccel(u8 axis);
 	Vector2f kalmanFilter(float angle, float angle_rate);
 	Vector2f complementaryFilter(float value_pre, float angle_accel, float gyro);
-
-private:
+	void     accFilter();	//low-pass filter
+	private:
 	float accel_raw_[3];
 	float gyro_raw_[3];
+	float accel_meanfiltered_[3];
+	float accel_raw_buf_x_[ACC_FILTER_COUNT]=
+	{
+		0
+	}
+	;
+	float accel_raw_buf_y_[ACC_FILTER_COUNT]=
+	{
+		0
+	}
+	;
+	float accel_raw_buf_z_[ACC_FILTER_COUNT]=
+	{
+		0
+	}
+	;
 	float dt_;	//sampling time
-    u8    filter_type_ = 0;   //Kalman Filter
-    
+	u8    filter_type_ = 0;	//Kalman Filter
 	Matrix<float,2,2> Q_, A_;
 	Matrix<float,2,1> B_;
 	Matrix<float,1,2> C_;
@@ -86,11 +102,33 @@ private:
 	Matrix<float,2,2> P_k_;
 	Matrix<float,2,2> I_;
 	Matrix<float, 2, 1> K_k_;	//Kalman gain
-    int display_ct_;	//counter for debug purpose
+	int display_ct_;	//counter for debug purpose
 	float R_;
 	float measurement_k_;
 	float input_;
 	PoseData pose_data_;
+	
+	void kalman_filter(float angle_m, float gyro_m, float *angle_f, float *angle_dot_f);
+	float angle_, angle_dot_;
+	const float Q_angle_ = 0.002, Q_gyro_ = 0.002, R_angle_ = 0.5;
+	float P_[2][2]=
+	{
+		{
+			1, 0
+		}
+		,
+		{
+			0, 1
+		}
+	}
+	;
+	float Pdot_[4] =
+	{
+		0, 0, 0, 0
+	}
+	;
+	const u8 C_0_ = 1;
+	float q_bias_, angle_err_, PCt_0_, PCt_1_, E_, K_0_, K_1_, t_0_, t_1_;
 }
 ;
 #endif
