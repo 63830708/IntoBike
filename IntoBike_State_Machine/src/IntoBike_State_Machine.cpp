@@ -28,6 +28,19 @@
 * 描述： IntoBike: state machine
 */
 #include "IntoBike_State_Machine.h"
+void IntoBikeStateMachine::begin(void)
+{
+	current_state_ = IDLE;
+	current_event_ = STAND_UP_EVENT;
+	u16 pickup_flag_ = 0;
+	u16 pickup_count0_ = 0;
+	u16 pickup_count1_ = 0;
+	u16 pickup_count2_ = 0;
+	u16 putdown_count_ = 0;
+	u16 putdown_flag_  = 0;
+	u16 standup_flag_  = 0;
+	u16 standup_count_ = 0;
+}
 void IntoBikeStateMachine::update(IntoBikeEvent event)
 {
 	switch(current_state_)
@@ -49,6 +62,8 @@ void IntoBikeStateMachine::update(IntoBikeEvent event)
 		{
 			if(event == PUT_DOWN_EVENT)
 			current_state_ = IDLE;
+			else if(event == FALL_DOWN_EVENT) 
+			current_state_ = FALL_DOWN;
 			break;
 		}
 		case REMOTE_CONTROLED:
@@ -83,7 +98,7 @@ IntoBikeState IntoBikeStateMachine::getCurrentState()
 }
 bool IntoBikeStateMachine::detectFallDown(float angle, float angle_rate)
 {
-	if(abs(angle) > 70.0 && abs(angle_rate) < 5)
+	if(abs(angle) > 70.0 && abs(angle_rate) < 10)
 	{
 		return 1;
 	}
@@ -105,26 +120,9 @@ bool IntoBikeStateMachine::detectPutDown(float accel,float angle)
 {
 	if(current_state_ == PICKED_UP)
 	{
-		if(putdown_flag_ == 0)
+		if(accel < -0.8 && (abs(angle) < 20))
 		{
-			if(accel > -0.8 && (abs(angle) < 20))
-			{
-				putdown_flag_ = 1;
-			}
-		}
-		if(putdown_flag_ == 1)
-		{
-			if(++putdown_count_ > 200)
-			{
-				putdown_flag_   = 0;
-				putdown_count_ = 0;
-			}
-			if(accel < -1.1 && (abs(angle) < 20))
-			{
-				putdown_flag_ = 0;
-				putdown_count_ = 0;
-				return 1;
-			}
+			return 1;
 		}
 	}
 	return 0;
@@ -142,19 +140,18 @@ bool IntoBikeStateMachine::detectStandUp(float angle_rate,float angle)
 }
 bool IntoBikeStateMachine::detectPickUp(float accel,float angle,int encoder_left,int encoder_right)
 {
-	// 	if(pickup_flag_ == 0)
-	// 	{
-	// 		if(abs(encoder_left) + abs(encoder_right) < 700)                    
-	// 		pickup_count0_++;
-	// 		else 
-	// 		pickup_count0_ = 0;
-	// 		if(pickup_count0_ > 10)
-	// 		{
-	// 			pickup_flag_ = 1;
-	// 			pickup_count0_ = 0;
-	// 		}
-	// 	}
-	pickup_flag_ = 1;
+	if(pickup_flag_ == 0)
+	{
+		if(abs(encoder_left) + abs(encoder_right) < 700)                    
+		pickup_count0_++;
+		else 
+		pickup_count0_ = 0;
+		if(pickup_count0_ > 10)
+		{
+			pickup_flag_ = 1;
+			pickup_count0_ = 0;
+		}
+	}
 	if(pickup_flag_ == 1)
 	{
 		if(++pickup_count1_ > 400)
@@ -162,31 +159,24 @@ bool IntoBikeStateMachine::detectPickUp(float accel,float angle,int encoder_left
 			pickup_count1_ = 0;
 			pickup_flag_ = 0;
 		}
-		if(accel < -1.1 && (abs(angle) < 20))
-		pickup_flag_ = 2;
+		if(accel > 1.4 && (abs(angle) < 10))
+		{
+			pickup_flag_ = 2;
+		}
 	}
 	if(pickup_flag_ == 2)
 	{
-		if(accel < -0.8  && (abs(angle) < 20))
-		{
-			pickup_flag_ = 3;
-		}
-		if(++pickup_count2_ > 200)
+		if(++pickup_count2_ > 400)
 		{
 			pickup_count2_ = 0;
-			pickup_flag_ = 0;
-		}
-	}
-	if(pickup_flag_ ==3)
-	{
-		if(++pickup_count3_ > 200)
-		{
-			pickup_count3_ = 0;
 			pickup_flag_ = 0;
 		}
 		if(abs(encoder_left) + abs(encoder_right) > 9900)
 		{
 			pickup_flag_ = 0;
+			pickup_count0_ = 0;
+			pickup_count1_ = 0;
+			pickup_count2_ = 0;
 			return 1;
 		}
 	}

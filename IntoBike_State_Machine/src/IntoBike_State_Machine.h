@@ -72,6 +72,7 @@ typedef struct StateMachineInfo
 class IntoBikeStateMachine
 {
 	public:
+	void begin(void);
 	void update(IntoBikeEvent event);
 	IntoBikeState getCurrentState();
 	bool detectFallDown(float angle, float angle_rate);
