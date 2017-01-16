@@ -1,3 +1,6 @@
+/*该头文件引用由IntoRobot自动添加.*/
+#include <IntoBike_PWM_OUT/IntoBike_PWM_OUT.h>
+
 /*
 ************************************************************************
 * 作者:  IntoRobot Team 
@@ -39,7 +42,7 @@ IntoBike: 步进电机控制接口
 #include "application.h"
 
 #define MAX_SPEED 13000
-#define MIN_SPEED 36
+#define MIN_SPEED 15
 
 class StepMotorControl
 {

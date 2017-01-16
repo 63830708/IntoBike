@@ -47,7 +47,7 @@ void StepMotorControl::init(void)
 	pinMode(stop_pin_, OUTPUT);
 	digitalWrite(fr_pin_,   LOW);
 	digitalWrite(step_pin_, LOW);
-	digitalWrite(stop_pin_, HIGH);
+	digitalWrite(stop_pin_, LOW);
 	motor_speed_ = 0;
 	is_stopped_   = false;
 	max_speed_ = MAX_SPEED;
@@ -55,19 +55,22 @@ void StepMotorControl::init(void)
 }
 void StepMotorControl::setMotorSpeed(int32_t speed)
 {
+	uint32_t abs_speed;
 	motor_speed_ = speed;
-	if(abs(motor_speed_) < min_speed_)  motor_speed_ = 0;
-	if(motor_speed_ > max_speed_) motor_speed_ = max_speed_;
-	else if(motor_speed_ < - max_speed_)  motor_speed_ = -max_speed_;
-	if(motor_speed_ > 0)
+	abs_speed = abs(motor_speed_);
+	
+	if(abs_speed < min_speed_)  abs_speed = min_speed_;
+	if(abs_speed > max_speed_)  abs_speed = max_speed_;
+	
+	if(motor_speed_ >= 0)
 	{
 		digitalWrite(fr_pin_,  HIGH);
-		analogWrite(step_pin_, 100, motor_speed_);
+		outputPWM(step_pin_, 200, abs_speed);
 	}
 	else
 	{
 		digitalWrite(fr_pin_,  LOW);
-		analogWrite(step_pin_, 100, -motor_speed_);
+		outputPWM(step_pin_, 200, abs_speed);
 	}
 }
 int32_t  StepMotorControl::getEncoder(void)
@@ -87,7 +90,7 @@ void StepMotorControl::disableMotors()
 }
 bool StepMotorControl::isStopped(void)
 {
-    return is_stopped_;
+	return is_stopped_;
 }
 void StepMotorControl::setMaxSpeed(int speed)
 {
