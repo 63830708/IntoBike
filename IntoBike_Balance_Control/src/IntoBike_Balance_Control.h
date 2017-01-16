@@ -31,8 +31,7 @@
 #define __INTOBIKE_BALANCE_CONTROL_H__
 #include"application.h"
 #define SPEED_HISTORY_NUM 20 
-#define MAX_MAGNITUDE  6000
-#define MAX_ACCELERATION 13000
+#define MAX_MAGNITUDE  5400
 struct WheelsSpeed
 {
 	float left_;
@@ -45,7 +44,6 @@ struct BalanceControlParams
 	float bc_kd_;
 	float vc_kp_;
 	float vc_ki_;
-	float max_accel_;	//to smooth step motor's control input
 	float max_magnitude_;
 }
 ;
@@ -59,6 +57,7 @@ struct DisplayDebugInfo
 	float balance_pwm_;
 	float rotation_pwm_;
 	float vc_iterm_;
+	u8    filter_type_;
 	WheelsSpeed wheels_command_speed_;
 	BalanceControlParams control_params_;
 }
@@ -69,25 +68,29 @@ class BalanceControl
 	void begin();
 	void begin(float sampling_time);
 	void restart();
-	DisplayDebugInfo getDebugInfo(void);
+	DisplayDebugInfo getDebugInfo(u8 filter_type);
 	void setParams(BalanceControlParams params);
 	void setMoveDirection(s8 direction);
 	void setRotateDirection(s8 direction);
-	WheelsSpeed doControl(float pitch_cur, float pitch_rate_cur,WheelsSpeed encoder, bool stop_flag);
+	void setObstacleBlockedStatus(bool flag);
+	WheelsSpeed doControl(float pitch_cur, float pitch_rate_cur,WheelsSpeed encoder);
 	float velocityController(WheelsSpeed encoder);
 	float balanceController(float pitch_cur, float pitch_rate_cur);
 	float rotationController(WheelsSpeed encoder);
-	float meanFilter(int16_t left,int16_t right);
-	WheelsSpeed boundWheelSpeedAccel(WheelsSpeed speed, WheelsSpeed encoder, float error);
+	float meanFilter(float left,float right);
 	WheelsSpeed boundControlOutput(WheelsSpeed speed);
 	WheelsSpeed linearizeControlOutput(WheelsSpeed speed);
+	void remoteControl(char command);
 	private:
-	float dt_ = 0.005f;
+	float dt_ = 0.01f;
 	BalanceControlParams control_params_;
-	float pitch_ref_       = 2.0f;
+	float pitch_ref_       = 2.5f;
 	float pitch_rate_ref_  = 0.0f;
 	s8   move_direction_   = 0;
 	s8   rotate_direction_ = 0;
+	bool obstacle_blocked_  = false;
+	uint16_t  blocked_backward_count_ = 0;
+	uint16_t  blocked_turn_count_     = 0;
 	float vc_iterm_        = 0.0f;
 	float speed_buffer_[SPEED_HISTORY_NUM] =
 	{

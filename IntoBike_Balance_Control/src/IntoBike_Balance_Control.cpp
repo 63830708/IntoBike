@@ -40,9 +40,8 @@ void BalanceControl::begin(float sampling_time)
 	control_params_.bc_kp_ = 300;
 	control_params_.bc_kd_ = 0.0;
 	control_params_.vc_kp_ = 1.0;
-	control_params_.vc_ki_ = 0.01;	//control_params_.vc_kp_ / 100.0;
+	control_params_.vc_ki_ = 0.01;
 	control_params_.max_magnitude_ = MAX_MAGNITUDE;
-	control_params_.max_accel_ = MAX_ACCELERATION;
 	velocity_ = 0;
 	vc_iterm_ = 0.0f;
 }
@@ -57,8 +56,9 @@ void BalanceControl::setParams(BalanceControlParams params)
 {
 	control_params_ = params;
 }
-DisplayDebugInfo BalanceControl::getDebugInfo(void)
+DisplayDebugInfo BalanceControl::getDebugInfo(u8 filter_type)
 {
+	debug_info_.filter_type_ = filter_type;
 	return debug_info_;
 }
 void BalanceControl::setMoveDirection(s8 direction)
@@ -69,20 +69,52 @@ void BalanceControl::setRotateDirection(s8 direction)
 {
 	rotate_direction_ = direction;
 }
-WheelsSpeed BalanceControl::doControl(float pitch_cur, float pitch_rate_cur, WheelsSpeed encoder, bool stop_flag)
+void BalanceControl::setObstacleBlockedStatus(bool flag)
+{
+	if(flag)
+	{
+		obstacle_blocked_ = true;
+	}
+	else
+	{
+		obstacle_blocked_ = false;
+	}
+}
+WheelsSpeed BalanceControl::doControl(float pitch_cur, float pitch_rate_cur, WheelsSpeed encoder)
 {
 	float balance_pwm, velocity_pwm, rotation_pwm;
 	WheelsSpeed speed;
-	if(stop_flag == true)
-	    vc_iterm_ = 0;
-	
+
 	balance_pwm   = balanceController(pitch_cur, pitch_rate_cur);
+	if(obstacle_blocked_ == true)
+	{
+		if(blocked_backward_count_ < 200)
+		{
+			blocked_backward_count_++;
+			move_direction_ = -1;			//backward
+		}
+		else
+		{
+			move_direction_ = 0;
+			if(blocked_turn_count_ < 150)
+			{
+			    blocked_turn_count_++;
+				rotate_direction_ = 1;				//turn right
+			}
+			else
+			{
+				blocked_turn_count_ = 0;
+				blocked_backward_count_ = 0;
+				rotate_direction_ = 0;
+				obstacle_blocked_ = false;
+			}
+		}
+	}
 	velocity_pwm  = velocityController(encoder);
 	rotation_pwm  = rotationController(encoder);
 	speed.left_   = balance_pwm + velocity_pwm + rotation_pwm;
 	speed.right_  = balance_pwm + velocity_pwm - rotation_pwm;
-	speed         = boundControlOutput(speed);
-	wheels_speed_ = boundWheelSpeedAccel(speed, encoder, pitch_ref_ - pitch_cur);
+	wheels_speed_ = boundControlOutput(speed);
 	//debug
 	debug_info_.control_params_        = control_params_;
 	debug_info_.pitch_                 = pitch_cur;
@@ -109,29 +141,25 @@ float BalanceControl::balanceController(float pitch_cur, float pitch_rate_cur)
 float  BalanceControl::velocityController(WheelsSpeed encoder)
 {
 	float velocity_average;
+	float left, right;
 	float result;
-	control_params_.vc_ki_ = control_params_.vc_kp_ / 100.0;
-	//debug
-	//control_params_.vc_kp_  = 0.0f;
-	//control_params_.vc_ki_  = 0.0f;
-	//vc_iterm_ = 0.0f;
 	//////
-	velocity_average = meanFilter(encoder.left_ / 13000.0 * 5000.0, encoder.right_  / 13000.0 * 5000.0);
+	left  = encoder.left_ / 13000.0 * control_params_.max_magnitude_;
+	right = encoder.right_/ 13000.0 * control_params_.max_magnitude_;
+	velocity_average = meanFilter(left, right);
 	velocity_ *= 0.7;
 	velocity_ += velocity_average * 0.3;
 	vc_iterm_ += velocity_;
 	if(move_direction_ == 1)  //forward
 	{
-		//velocity_ += 1700;
-		vc_iterm_ += 10000;
+		vc_iterm_ -= 10000;
 	}
 	else if(move_direction_ == -1)  //backward
 	{
-		//velocity_ -= 1700;
-		vc_iterm_ -= 10000;
+		vc_iterm_ += 10000;
 	}
-	if(vc_iterm_ >  60000)  	vc_iterm_ = 60000;
-	if(vc_iterm_ < -60000)	    vc_iterm_ = -60000;
+	if(vc_iterm_ >  160000)  	vc_iterm_ = 160000;
+	if(vc_iterm_ < -70000)	    vc_iterm_ = -70000;
 	result = velocity_ * control_params_.vc_kp_ + vc_iterm_ * control_params_.vc_ki_;
 	return result;
 }
@@ -156,24 +184,9 @@ float BalanceControl::rotationController(WheelsSpeed encoder)
 	if(rotate_direction_ == 1)	            rotation_value_ += rotation_increase_;
 	else if(rotate_direction_ == -1)	    rotation_value_ -= rotation_increase_;
 	else rotation_value_ = 0;
-	if(rotation_value_ > 1800)  rotation_value_ = 1800;
-	if(rotation_value_ < -1800) rotation_value_ = -1800;
+	if(rotation_value_ > 2300)  rotation_value_ = 2300;
+	if(rotation_value_ < -2300) rotation_value_ = -2300;
 	return rotation_value_;
-}
-//Bound acceleration
-WheelsSpeed BalanceControl::boundWheelSpeedAccel(WheelsSpeed speed, WheelsSpeed encoder, float error)
-{
-	float accel;
-	float threshold = control_params_.max_accel_;
-
-	accel = speed.left_ - encoder.left_;
-	if(accel > threshold)  speed.left_ = encoder.left_ + threshold;
-	else if(accel < -threshold)  speed.left_ = encoder.left_ - threshold;
-	
-	accel = speed.right_ - encoder.right_;
-	if(accel > threshold) speed.right_ = encoder.right_ + threshold;
-	else if(accel < -threshold) speed.right_ = encoder.right_ - threshold;
-	return speed;
 }
 //Bound control output
 WheelsSpeed BalanceControl::boundControlOutput(WheelsSpeed speed)
@@ -192,7 +205,7 @@ WheelsSpeed BalanceControl::linearizeControlOutput(WheelsSpeed speed)
 	return speed;
 }
 //control_filter
-float BalanceControl::meanFilter(int16_t left,int16_t right)
+float BalanceControl::meanFilter(float left,float right)
 {
 	uint8_t i;
 	float sum = 0.0f;
@@ -208,4 +221,41 @@ float BalanceControl::meanFilter(int16_t left,int16_t right)
 	}
 	result = sum / SPEED_HISTORY_NUM;
 	return result;
+}
+//remote command
+void BalanceControl::remoteControl(char command)
+{
+	switch(command)
+	{
+		case 'r':
+		{
+			setRotateDirection(-1);
+			setMoveDirection(0);
+			break;
+		}
+		case 'f':
+		{
+			setMoveDirection(1);
+			setRotateDirection(0);
+			break;
+		}
+		case 'l':
+		{
+			setRotateDirection(1);
+			setMoveDirection(0);
+			break;
+		}
+		case 'b':
+		{
+			setMoveDirection(-1);
+			setRotateDirection(0);
+			break;
+		}
+		case 's':
+		{
+			setRotateDirection(0);
+			setMoveDirection(0);
+			break;
+		}
+	}
 }
