@@ -88,7 +88,7 @@ WheelsSpeed BalanceControl::doControl(float pitch_cur, float pitch_rate_cur, Whe
 	balance_pwm   = balanceController(pitch_cur, pitch_rate_cur);
 	if(obstacle_blocked_ == true)
 	{
-		if(blocked_backward_count_ < 200)
+		if(blocked_backward_count_ < 100)
 		{
 			blocked_backward_count_++;
 			move_direction_ = -1;			//backward
@@ -96,7 +96,7 @@ WheelsSpeed BalanceControl::doControl(float pitch_cur, float pitch_rate_cur, Whe
 		else
 		{
 			move_direction_ = 0;
-			if(blocked_turn_count_ < 150)
+			if(blocked_turn_count_ < 100)
 			{
 			    blocked_turn_count_++;
 				rotate_direction_ = 1;				//turn right
@@ -158,8 +158,8 @@ float  BalanceControl::velocityController(WheelsSpeed encoder)
 	{
 		vc_iterm_ += 10000;
 	}
-	if(vc_iterm_ >  160000)  	vc_iterm_ = 160000;
-	if(vc_iterm_ < -70000)	    vc_iterm_ = -70000;
+	if(vc_iterm_ >  100000)  	vc_iterm_ = 100000;
+	if(vc_iterm_ < -100000)	    vc_iterm_ = -100000;
 	result = velocity_ * control_params_.vc_kp_ + vc_iterm_ * control_params_.vc_ki_;
 	return result;
 }

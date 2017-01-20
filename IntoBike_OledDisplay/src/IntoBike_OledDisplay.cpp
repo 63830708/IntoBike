@@ -34,8 +34,8 @@ IntoBike: 1.电池电压检测; 2.OLED屏幕的显示.
 5. 第四行显示倾角和角速度
 6. 第五行显示障碍物距离。
 */
-#include <Adafruit_SSD1306/Adafruit_SSD1306.h>
 #include "IntoBike_OledDisplay.h"
+extern uint8_t buffer[SSD1306_LCDHEIGHT * SSD1306_LCDWIDTH / 8];
 IntoBikeOledDisplay::IntoBikeOledDisplay() : Adafruit_SSD1306(D6)
 {
 	init();
@@ -43,28 +43,31 @@ IntoBikeOledDisplay::IntoBikeOledDisplay() : Adafruit_SSD1306(D6)
 void IntoBikeOledDisplay::begin()
 {
 	// by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
-	Adafruit_SSD1306::begin(SSD1306_SWITCHCAPVCC, 0x78>>1);	// initialize with the I2C addr 0x78 (for the 128x64), it should be shifted left a bit for our oled
+	begin(0x78>>1);	// initialize with the I2C addr 0x78 (for the 128x64), it should be shifted left a bit for our oled
 }
 void IntoBikeOledDisplay::begin(uint8_t i2caddr)
 {
 	// by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
 	Adafruit_SSD1306::begin(SSD1306_SWITCHCAPVCC, i2caddr);
+	displayLogo();
 }
 void IntoBikeOledDisplay::init()
 {
-	data_.voltage_           = 0.0f;
+	data_.voltage_           = 1000.0f;
+	lowpass_filter_.input(data_.voltage_);	//initialize the filter
 	data_.velocity_l_        = 0.0f;
 	data_.velocity_r_        = 0.0f;
 	data_.obstacle_distance_ = 0.0f;
 	data_.pitch_             = 0.0f;
 	data_.pitch_rate_        = 0.0f;
+	for (int i=0; i<LCD_WIDTH; i++)
+	curve_data_[i] = -1;
 	pinMode(VOLTAGE_AD_PIN, AN_INPUT);
 }
 void IntoBikeOledDisplay::displayLogo()
 {
-	drawBitmap(0, 0, intorobot_logo_bmp, 64, 16, WHITE);
 	display();
-	delay(50);
+	delay(2000);
 }
 void IntoBikeOledDisplay::displayData(u8 flag)
 {
@@ -98,13 +101,13 @@ void IntoBikeOledDisplay::displayData(u8 flag)
 			}
 			case 1:
 			{
-				printf("BK:%.1f %.1f\n",    debug_data_.control_params_.bc_kp_,  debug_data_.control_params_.bc_kd_);
-				printf("VK:%.4f %.4f\n",    debug_data_.control_params_.vc_kp_,  debug_data_.control_params_.vc_ki_);
-				printf("VL:%4.0f %4.0f\n",  debug_data_.wheels_command_speed_.left_, debug_data_.wheels_command_speed_.right_);
-				printf("Mx:%4.0f %4.0f\n",  debug_data_.control_params_.max_accel_, debug_data_.control_params_.max_magnitude_);	
-				printf("C:%.0f %.0f %.0f\n",debug_data_.balance_pwm_, debug_data_.velocity_pwm_, debug_data_.rotation_pwm_);	
-				printf("VIng:%.0f\n",       debug_data_.vc_iterm_);
-				printf("S: %3.2f %3.2f\n",  debug_data_.pitch_, debug_data_.pitch_rate_);
+				printf("BK:%.1f %.1f\n",       debug_data_.control_params_.bc_kp_,  debug_data_.control_params_.bc_kd_);
+				printf("VK:%.4f %.4f\n",       debug_data_.control_params_.vc_kp_,  debug_data_.control_params_.vc_ki_);
+				printf("VL:%4.0f %4.0f\n",     debug_data_.wheels_command_speed_.left_, debug_data_.wheels_command_speed_.right_);
+				printf("VIng:%.0f\n",          debug_data_.vc_iterm_);
+				printf("C:%.0f %.0f %.0f\n",   debug_data_.balance_pwm_, debug_data_.velocity_pwm_, debug_data_.rotation_pwm_);
+				printf("Filter:%d\n",          debug_data_.filter_type_);
+				printf("S: %3.2f %3.2f\n",     debug_data_.pitch_, debug_data_.pitch_rate_);
 				printf("Vol:%3.2f  %3.2f%%\n", data_.voltage_, (data_.voltage_ - 10.8) / (12.6 - 10.8) * 100);
 				break;
 			}
@@ -116,6 +119,32 @@ void IntoBikeOledDisplay::displayData(u8 flag)
 				printf("Pc:%3.2f-Pr:%3.2f\n", statemachine_data_.data_.pitch_, statemachine_data_.data_.pitch_rate_);
 				printf("EL:%3.2f-ER:%3.2f\n", statemachine_data_.data_.encoder_left_, statemachine_data_.data_.encoder_right_);
 				break;
+			}
+			case 3:
+			{
+				int i=0, j=0;
+				for (i=0; i<LCD_WIDTH; i++)
+				{
+					j++;
+					if(curve_data_[i] == -1)
+					{
+						curve_data_[i] = (int8_t)((data_.pitch_ + 90) / 180.0 * 64);
+						break;
+					}
+				}
+				if(j == LCD_WIDTH)
+				{
+				    for (i=0; i<LCD_WIDTH - 1; i++)
+				    {
+				        curve_data_[i] = curve_data_[i+1];
+				    }
+				    curve_data_[LCD_WIDTH - 1] = (int8_t)((data_.pitch_ + 90) / 180.0 * 64);
+				}
+				for (i=1; i<j; i++)
+				{
+					drawPixel(i, curve_data_[i], WHITE);
+					drawLine(i-1, curve_data_[i-1], i, curve_data_[i], WHITE);
+				}
 			}
 		}
 	}
@@ -202,26 +231,40 @@ void IntoBikeOledDisplay::printStateEvent(IntoBikeState state, IntoBikeEvent eve
 		}
 	}
 }
+//command from bluetooth
+void IntoBikeOledDisplay::switchDisplay(char command)
+{
+	if(command == 'd')
+	{
+		display_index_++;
+		if(display_index_ > 3)
+		{
+			display_index_ = 0;
+		}
+	}
+}
+void IntoBikeOledDisplay::displayData()
+{
+	displayData(display_index_);
+}
 //@params flag 0-normal data, 1-debug params, 2-statemachine info
-void IntoBikeOledDisplay::displayData(DisplayData data)
+void IntoBikeOledDisplay::setData(DisplayData data)
 {
 	data_ = data;
-	displayData(0);
 }
 //@params flag 0-normal data, 1-debug params, 2-statemachine info
-void IntoBikeOledDisplay::displayData(DisplayDebugInfo data)
+void IntoBikeOledDisplay::setData(DisplayDebugInfo data)
 {
 	debug_data_ = data;
-	displayData(1);
 }
 //@params flag 0-normal data, 1-debug params, 2-statemachine info
-void IntoBikeOledDisplay::displayData(StateMachineInfo data)
+void IntoBikeOledDisplay::setData(StateMachineInfo data)
 {
 	statemachine_data_ = data;
-	displayData(2);
 }
 void IntoBikeOledDisplay::readVoltage()
 {
-	data_.voltage_ = (float)(analogRead(VOLTAGE_AD_PIN)) * 0.0045922 / 0.9854;	/// 3.3 / 10.0 * 57.0 / 4096.0 = 0.0045922, Here 0.9854 is a calibrated param
-	data_.voltage_ = lowpass_filter_.input(data_.voltage_);
+	data_.voltage_ = (float)(analogRead(VOLTAGE_AD_PIN)) * 0.0045922 / 0.9854 * 0.9806;	/// 3.3 / 10.0 * 57.0 / 4096.0 = 0.0045922, Here 0.9854 is a calibrated param
+	if(data_.voltage_ > 1.0)
+	    data_.voltage_ = lowpass_filter_.input(data_.voltage_);
 }

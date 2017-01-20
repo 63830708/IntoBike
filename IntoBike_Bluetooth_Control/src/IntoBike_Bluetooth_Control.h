@@ -1,6 +1,3 @@
-/*该头文件引用由IntoRobot自动添加.*/
-#include <IntoBike_PWM_OUT/IntoBike_PWM_OUT.h>
-
 /*
 ************************************************************************
 * 作者:  IntoRobot Team 
@@ -28,42 +25,21 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 * THE SOFTWARE.
 *
-* 描述：
-IntoBike: 步进电机控制接口
-步进电机为1.8度分辨率，驱动芯片LV8731V选择16细分，即步进电机的分辨率为0.1125度。 
-经过实验测试，电机的最高响应频率约为20000步／秒，即每秒钟电机最大转动6.25圈。
-为了保证精度，我们将最大转速限定为13000步／秒，即4.06圈／秒，
-因此我们限定步进电机驱动芯片LV8731V的最大输入PWM脉冲频率为13KHz 
+描述：
+由手机或者电脑，经由蓝牙给IntoBike发送控制指令
+蓝牙接受指令的列表：
+d - oled屏幕显示数据的切换
+l - 小车左转
+r - 小车右转
+f - 小车前进
+b - 小车后退
+s - 小车停止
 */
-
-#ifndef __INTOBIKE_STEPMOTOR_CONTROL_H__
-#define __INTOBIKE_STEPMOTOR_CONTROL_H__
-
+#ifndef INTOBIKE_BLUETOOTH_CONTROL_H_
+#define INTOBIKE_BLUETOOTH_CONTROL_H_
 #include "application.h"
-
-#define MAX_SPEED 13000
-#define MIN_SPEED 15
-
-class StepMotorControl
-{
-public:
-	void  begin(int fr_pin, int step_pin, int stop_pin);
-	void  init(void);
-	void  disableMotors();
-	void  enableMotors();
-	void  setMaxSpeed(int speed);
-	void  setMinSpeed(int speed);
-    void  setMotorSpeed(int32_t speed);
-    bool  isStopped(void);
-    int32_t getEncoder(void);
-private:
-    int32_t motor_speed_;
-    int  fr_pin_;
-    int  step_pin_;
-    int  stop_pin_;
-    int32_t max_speed_;
-    int32_t min_speed_;
-    bool is_stopped_;
-}
-;
+#define BLUETOOTH_BUFFER_SIZE 100
+bool bluetoothDataReady(bool flag);
+bool processBluetoothData(char * command, bool flag);
+extern char bluetooth_buffer_[BLUETOOTH_BUFFER_SIZE];
 #endif

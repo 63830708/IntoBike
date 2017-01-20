@@ -84,7 +84,7 @@ class BalanceControl
 	private:
 	float dt_ = 0.01f;
 	BalanceControlParams control_params_;
-	float pitch_ref_       = 2.5f;
+	float pitch_ref_       = 0.0f;
 	float pitch_rate_ref_  = 0.0f;
 	s8   move_direction_   = 0;
 	s8   rotate_direction_ = 0;

@@ -111,7 +111,7 @@ bool IntoBikeStateMachine::detectObstacle(float distance)
 {
 	if(distance < 3.0)
 	return 0;	//error
-	else if(distance < 60)
+	else if(distance < 40)
 	return 1;
 	else
 	return 0;

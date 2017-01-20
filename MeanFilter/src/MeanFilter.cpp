@@ -1,4 +1,11 @@
 #include "MeanFilter.h"
+MeanFilter::MeanFilter(float init_value)
+{
+    for(int i; i < HISTORY_NUM; i++)
+    {
+        buffer_[i] = init_value;
+    }
+}
 float MeanFilter::input(float inVal)
 {
 	int i;

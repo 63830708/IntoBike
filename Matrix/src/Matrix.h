@@ -27,6 +27,8 @@
 *
 描述：基本的矩阵操作
 */
+#ifndef __INTOROBOT_MATRIX_H__
+#define __INTOROBOT_MATRIX_H__
 namespace mm
 {
 	template <typename T, unsigned m, unsigned n>
@@ -176,3 +178,4 @@ namespace mm
 		return result;
 	}
 }
+#endif

@@ -27,4 +27,3 @@ double SonarSensorProcessing::getDistance(void)
 	obstacle_distance_ = lowpass_filter_.input(obstacle_distance_);
 	return obstacle_distance_;
 }
-

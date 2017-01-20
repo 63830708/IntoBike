@@ -1,8 +1,5 @@
 /*该头文件引用由IntoRobot自动添加.*/
-#include <IntoBike_State_Machine/IntoBike_State_Machine.h>
-
-/*该头文件引用由IntoRobot自动添加.*/
-#include <MeanFilter/MeanFilter.h>
+#include <Adafruit_SSD1306_0/Adafruit_SSD1306_0.h>
 
 /*
 ************************************************************************
@@ -42,56 +39,59 @@ IntoBike: 1.电池电压检测; 2.OLED屏幕的显示.
 */
 #ifndef __INTOBIKE_OLEDDISPLAY_
 #define __INTOBIKE_OLEDDISPLAY_
-
 #include "application.h"
-
 /*该头文件引用由IntoRobot自动添加.*/
-#include <Adafruit_SSD1306/Adafruit_SSD1306.h>
-
+#include <IntoBike_State_Machine/IntoBike_State_Machine.h>
+/*该头文件引用由IntoRobot自动添加.*/
+#include <MeanFilter/MeanFilter.h>
 /*该头文件引用由IntoRobot自动添加.*/
 #include <IntoBike_Balance_Control/IntoBike_Balance_Control.h>
-
 #if (SSD1306_LCDHEIGHT != 64)
 #error("Height incorrect, please fix Adafruit_SSD1306.h!");
 #endif
-
 #define VOLTAGE_AD_PIN A7
 #define LCD_HEIGHT 64
 #define LCD_WIDTH  128
-static uint8_t intorobot_logo_bmp[LCD_HEIGHT * LCD_WIDTH / 8] = {0
-};
+// static uint8_t intorobot_logo_bmp[LCD_HEIGHT * LCD_WIDTH / 8] =
+// {
+// 0
+// };
 
 struct DisplayData
 {
-    float voltage_;
-    float velocity_l_;
-    float velocity_r_;
-    float obstacle_distance_;
-    float pitch_;
-    float pitch_rate_;
-    float control_l_;
-    float control_r_;
-};
-
+	float voltage_;
+	float velocity_l_;
+	float velocity_r_;
+	float obstacle_distance_;
+	float pitch_;
+	float pitch_rate_;
+	float control_l_;
+	float control_r_;
+}
+;
 class IntoBikeOledDisplay: Adafruit_SSD1306
 {
-  public:
-    IntoBikeOledDisplay();
-    void init();
-    void begin();
-    void begin(uint8_t i2caddr);
-    void displayData(u8 flag);
-    void displayData(DisplayData data);
-    void displayData(DisplayDebugInfo data);
-    void displayData(StateMachineInfo data);
-    void printStateEvent(IntoBikeState state, IntoBikeEvent event);
-    void displayLogo();
-    void readVoltage();
-  private:
-    DisplayData       data_;
-    DisplayDebugInfo  debug_data_;
-    StateMachineInfo  statemachine_data_;
-    MeanFilter        lowpass_filter_;
-};
-
+	public:
+	IntoBikeOledDisplay();
+	void init();
+	void begin();
+	void begin(uint8_t i2caddr);
+	void displayData(u8 flag);
+	void displayData(void);
+	void setData(DisplayData data);
+	void setData(DisplayDebugInfo data);
+	void setData(StateMachineInfo data);
+	void switchDisplay(char command);
+	void printStateEvent(IntoBikeState state, IntoBikeEvent event);
+	void displayLogo();
+	void readVoltage();
+	private:
+	DisplayData       data_;
+	DisplayDebugInfo  debug_data_;
+	StateMachineInfo  statemachine_data_;
+	MeanFilter        lowpass_filter_;
+	uint8_t           display_index_ = 0;
+	char              curve_data_[LCD_WIDTH];
+}
+;
 #endif

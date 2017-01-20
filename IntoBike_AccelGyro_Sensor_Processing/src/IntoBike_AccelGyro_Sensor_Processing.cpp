@@ -110,8 +110,8 @@ void AccelGyroSensorProcessing::processData(void)
 	doMeasurement();
 	pitch      = atan2(accel_meanfiltered_[0], sqrt(accel_meanfiltered_[2] * accel_meanfiltered_[2] + accel_meanfiltered_[1] * accel_meanfiltered_[1])) / PI *180.0;
 	pitch_rate = gyro_raw_[1];
-	pitch     -= 0.5; //2.5 bias
-	pitch_rate = gyro_raw_[1] + 0.98; // 0.98 bias
+	pitch     -= 1.5; // bias
+	pitch_rate = gyro_raw_[1] - 0.06; //  bias
 	switch(filter_type_)
 	{
 		case 0:
